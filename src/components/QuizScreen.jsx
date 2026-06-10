@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { CATEGORIES, CATEGORY_ORDER } from '../data/categories';
 
@@ -12,7 +12,6 @@ function shuffle(arr) {
 }
 
 function buildLikesQuestions(students) {
-  // "What [cat] does [name] like?" — one question per student per category
   const qs = [];
   for (const student of students) {
     for (const cat of CATEGORY_ORDER) {
@@ -25,11 +24,11 @@ function buildLikesQuestions(students) {
 }
 
 function buildWhoLikesQuestions(students) {
-  // "Who likes...?" — one question per student, showing all 4 liked items
-  const qs = students
-    .filter(s => CATEGORY_ORDER.some(c => s.picks[c]))
-    .map(s => ({ type: 'who', student: s }));
-  return shuffle(qs);
+  return shuffle(
+    students
+      .filter(s => CATEGORY_ORDER.some(c => s.picks[c]))
+      .map(s => ({ type: 'who', student: s }))
+  );
 }
 
 function getItem(category, id) {
@@ -38,25 +37,16 @@ function getItem(category, id) {
 
 function ScorePopup({ value, x, y, id }) {
   return (
-    <div
-      key={id}
-      className="score-popup"
-      style={{
-        left: x,
-        top: y,
-        color: value > 0 ? '#22543D' : '#742A2A',
-      }}
-    >
+    <div className="score-popup" style={{ left: x, top: y, color: value > 0 ? '#22543D' : '#742A2A' }}>
       {value > 0 ? `+${value}` : value}
     </div>
   );
 }
 
 export default function QuizScreen({ mode, students, onDone }) {
-  const questions = useState(() =>
+  const [questions] = useState(() =>
     mode === 'likes' ? buildLikesQuestions(students) : buildWhoLikesQuestions(students)
-  )[0];
-
+  );
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -84,16 +74,17 @@ export default function QuizScreen({ mode, students, onDone }) {
     if (isCorrect) {
       setCorrectItem(itemId);
       setLocked(true);
-      setCorrect(c => c + 1);
-      const pts = 15;
-      setScore(s => s + pts);
-      addPopup(pts, e);
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, zIndex: 300 });
+      const newCorrect = correct + 1;
+      const newScore = score + 15;
+      setCorrect(newCorrect);
+      setScore(newScore);
+      addPopup(15, e);
+      confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, zIndex: 300 });
       setTimeout(() => {
         setCorrectItem(null);
         setLocked(false);
         if (qIdx + 1 >= total) {
-          onDone({ score: score + pts, correct: correct + 1, wrong, total });
+          onDone({ score: newScore, correct: newCorrect, wrong, total });
         } else {
           setQIdx(i => i + 1);
         }
@@ -101,44 +92,62 @@ export default function QuizScreen({ mode, students, onDone }) {
     } else {
       setWrongItem(itemId);
       setWrong(w => w + 1);
-      const pts = -10;
-      setScore(s => Math.max(0, s + pts));
-      addPopup(Math.max(0, score + pts) - score, e);
+      const penalty = Math.min(10, score);
+      setScore(s => s - penalty);
+      addPopup(-penalty, e);
       setTimeout(() => setWrongItem(null), 400);
     }
   }
 
-  if (!q) {
-    onDone({ score, correct, wrong, total });
-    return null;
-  }
+  if (!q) { onDone({ score, correct, wrong, total }); return null; }
+
+  const exitResult = () => onDone({ score, correct, wrong, total });
 
   // ── Likes mode ──────────────────────────────────────────
   if (mode === 'likes') {
     const cat = CATEGORIES[q.category];
     return (
-      <div className="screen quiz-screen">
-        <QuizHeader qIdx={qIdx} total={total} score={score} onDone={() => onDone({ score, correct, wrong, total })} />
-        <div className="quiz-body">
-          <div className="quiz-question-box">
-            <div className="quiz-question-text">
-              What {cat.label.toLowerCase()} does <strong>{q.student.name}</strong> like?
+      <div className="quiz-fullscreen">
+        {/* Top bar */}
+        <div className="quiz-topbar">
+          <button className="quiz-exit-btn" onClick={exitResult}>✕</button>
+          <div className="quiz-progress">
+            <div className="quiz-progress-fill" style={{ width: `${(qIdx / total) * 100}%` }} />
+          </div>
+          <span className="quiz-count">{qIdx + 1} / {total}</span>
+          <span className="quiz-score-badge">⭐ {score}</span>
+        </div>
+
+        {/* Left / Right split */}
+        <div className="quiz-split">
+          {/* LEFT — question panel */}
+          <div className="quiz-left">
+            <div className="quiz-cat-label">{cat.emoji} {cat.label}</div>
+            <div className="quiz-question-main">
+              What {cat.label.toLowerCase()} does
+            </div>
+            <div className="quiz-student-name">{q.student.name}</div>
+            <div className="quiz-question-main">like?</div>
+          </div>
+
+          {/* RIGHT — answer grid */}
+          <div className="quiz-right">
+            <div className="quiz-grid-label">TAP THE RIGHT {cat.label.toUpperCase()}</div>
+            <div className="quiz-answer-grid">
+              {cat.items.map(item => (
+                <div
+                  key={item.id}
+                  className={`quiz-answer-item${correctItem === item.id ? ' correct' : ''}${wrongItem === item.id ? ' wrong' : ''}${locked && correctItem !== item.id ? ' disabled' : ''}`}
+                  onClick={e => handleAnswer(item.id, e)}
+                >
+                  <img src={item.img} alt={item.label} />
+                  <span className="quiz-answer-label">{item.label}</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="answer-label">TAP THE RIGHT {cat.label.toUpperCase()}</div>
-          <div className="answer-grid">
-            {cat.items.map(item => (
-              <div
-                key={item.id}
-                className={`answer-item${correctItem === item.id ? ' correct' : ''}${wrongItem === item.id ? ' wrong' : ''}${locked && correctItem !== item.id ? ' disabled' : ''}`}
-                onClick={e => handleAnswer(item.id, e)}
-              >
-                <img src={item.img} alt={item.label} />
-                <span className="answer-item-label">{item.label}</span>
-              </div>
-            ))}
-          </div>
         </div>
+
         {popups.map(p => <ScorePopup key={p.id} {...p} />)}
       </div>
     );
@@ -151,48 +160,51 @@ export default function QuizScreen({ mode, students, onDone }) {
   })).filter(x => x.item);
 
   return (
-    <div className="screen quiz-screen">
-      <QuizHeader qIdx={qIdx} total={total} score={score} onDone={() => onDone({ score, correct, wrong, total })} />
-      <div className="quiz-body">
-        <div className="quiz-question-box">
-          <div className="quiz-question-text">Who likes…?</div>
-          <div className="liked-images-row">
+    <div className="quiz-fullscreen">
+      <div className="quiz-topbar">
+        <button className="quiz-exit-btn" onClick={exitResult}>✕</button>
+        <div className="quiz-progress">
+          <div className="quiz-progress-fill" style={{ width: `${(qIdx / total) * 100}%` }} />
+        </div>
+        <span className="quiz-count">{qIdx + 1} / {total}</span>
+        <span className="quiz-score-badge">⭐ {score}</span>
+      </div>
+
+      <div className="quiz-split">
+        {/* LEFT — liked images */}
+        <div className="quiz-left">
+          <div className="quiz-question-main">Who likes…?</div>
+          <div className="who-liked-grid">
             {likedItems.map(({ cat, item }) => (
-              <div className="liked-img-cell" key={cat}>
-                <div className="liked-img-wrap">
+              <div className="who-liked-cell" key={cat}>
+                <div className="who-liked-img">
                   <img src={item.img} alt={item.label} />
                 </div>
-                <span className="liked-cat-label">{CATEGORIES[cat].label}</span>
+                <span className="who-liked-cat">{CATEGORIES[cat].label}</span>
+                <span className="who-liked-name">{item.label}</span>
               </div>
             ))}
           </div>
         </div>
-        <div className="answer-label">TAP THE RIGHT STUDENT</div>
-        <div className="answer-grid who-grid">
-          {students.map(student => (
-            <div
-              key={student.id}
-              className={`answer-item${correctItem === student.id ? ' correct' : ''}${wrongItem === student.id ? ' wrong' : ''}${locked && correctItem !== student.id ? ' disabled' : ''}`}
-              onClick={e => handleAnswer(student.id, e)}
-            >
-              <span className="who-name-btn">{student.name}</span>
-            </div>
-          ))}
+
+        {/* RIGHT — name buttons */}
+        <div className="quiz-right">
+          <div className="quiz-grid-label">TAP THE RIGHT STUDENT</div>
+          <div className="quiz-who-grid">
+            {students.map(student => (
+              <div
+                key={student.id}
+                className={`quiz-who-item${correctItem === student.id ? ' correct' : ''}${wrongItem === student.id ? ' wrong' : ''}${locked && correctItem !== student.id ? ' disabled' : ''}`}
+                onClick={e => handleAnswer(student.id, e)}
+              >
+                {student.name}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      {popups.map(p => <ScorePopup key={p.id} {...p} />)}
-    </div>
-  );
-}
 
-function QuizHeader({ qIdx, total, score, onDone }) {
-  return (
-    <div className="quiz-header">
-      <button className="btn-back" onClick={onDone}>✕</button>
-      <div className="quiz-progress">
-        <div className="quiz-progress-fill" style={{ width: `${((qIdx) / total) * 100}%` }} />
-      </div>
-      <span className="quiz-count">{qIdx + 1} / {total}</span>
+      {popups.map(p => <ScorePopup key={p.id} {...p} />)}
     </div>
   );
 }
