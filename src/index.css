@@ -222,7 +222,7 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
 .quiz-left {
   width: 36%;
   flex-shrink: 0;
-  background: var(--surface-panel);
+  background: var(--surface-base);
   border-right: 2px solid var(--border-soft);
   display: flex;
   flex-direction: column;
@@ -264,6 +264,7 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
   flex-direction: column;
   padding: 24px 28px;
   overflow: hidden;
+  background: var(--surface-panel);
 }
 
 .quiz-grid-label {
@@ -291,7 +292,7 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
   padding: 16px 8px 12px;
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-soft);
-  background: var(--surface-panel);
+  background: var(--surface-base);
   cursor: pointer;
   transition: border-color 0.15s, transform 0.1s, background 0.15s;
 }
@@ -374,7 +375,7 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
   font-size: clamp(20px, 2.5vw, 32px);
   font-weight: 600;
   color: var(--ink-primary);
-  background: var(--surface-panel);
+  background: var(--surface-base);
   border: 3px solid var(--border-soft);
   border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center;
