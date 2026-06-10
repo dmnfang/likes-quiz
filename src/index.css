@@ -220,7 +220,7 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
 
 /* LEFT panel — question */
 .quiz-left {
-  width: 36%;
+  width: 50%;
   flex-shrink: 0;
   background: var(--surface-base);
   border-right: 2px solid var(--border-soft);
@@ -369,7 +369,8 @@ body { background: var(--surface-base); color: var(--ink-primary); font-family: 
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   flex: 1;
-  align-content: start;
+  align-content: stretch;
+  height: 100%;
 }
 
 .quiz-who-item {
